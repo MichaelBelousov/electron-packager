@@ -22,7 +22,7 @@ class Pruner {
   }
 
   setModules (moduleMap) {
-    const modulePaths = Array.from(moduleMap.keys()).map(modulePath => `/${common.normalizePath(modulePath)}`)
+    const modulePaths = Array.from(moduleMap.keys())
     this.modules = new Set(modulePaths)
     this.walkedTree = true
   }
