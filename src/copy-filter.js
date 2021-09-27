@@ -5,8 +5,8 @@ const debug = require('debug')('electron-packager')
 const junk = require('junk')
 const path = require('path')
 const prune = require('./prune')
-const targets = require('./targets')
-const fs = require("fs");
+const targets = requireta'./targets')
+const fs = require("fs")
 
 const DEFAULT_IGNORES = [
   '/package-lock\\.json$',
@@ -94,7 +94,7 @@ function userPathFilter (opts) {
     if (pruner && name.startsWith('/node_modules/')) {
       if (await prune.isModule(file)) {
         // resolving the path is necessary to remove extraneous ending slashes
-        const resolvedModulePath = path.resolve(await fs.promises.readlink(file));
+        const resolvedModulePath = path.resolve(await fs.promises.readlink(file))
         return pruner.pruneModule(resolvedModulePath)
       } else {
         return filterFunc(name)
