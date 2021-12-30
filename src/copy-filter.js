@@ -5,7 +5,7 @@ const debug = require('debug')('electron-packager')
 const junk = require('junk')
 const path = require('path')
 const prune = require('./prune')
-const targets = requireta'./targets')
+const targets = require('./targets')
 const fs = require("fs")
 
 const DEFAULT_IGNORES = [
@@ -93,8 +93,19 @@ function userPathFilter (opts) {
 
     if (pruner && name.startsWith('/node_modules/')) {
       if (await prune.isModule(file)) {
-        // resolving the path is necessary to remove extraneous ending slashes
-        const resolvedModulePath = path.resolve(await fs.promises.readlink(file))
+        // TODO: try to reuse stats from galactus or node glob
+        //const fileStat = await fs.promises.lstat(file);
+        //if (fileStat.isSymbolicLink()) file = await fs.promises.readlink(file);
+        // TODO: only do this if following symlinks, right?
+        let resolvedModulePath = file;
+        try {
+          // FIXME: weird handling but need to check if there is a symlink in the path, not just the result
+          resolvedModulePath = await fs.promises.readlink(file)
+          resolvedModulePath = path.resolve(path.dirname(resolvedModulePath), resolvedModulePath)
+        } catch {
+          // FIXME: weird comment: resolving the path is necessary to remove extraneous ending slashes
+          resolvedModulePath = path.resolve(file)
+        }
         return pruner.pruneModule(resolvedModulePath)
       } else {
         return filterFunc(name)

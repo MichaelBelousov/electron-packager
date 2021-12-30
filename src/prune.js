@@ -31,7 +31,7 @@ class Pruner {
     if (this.walkedTree) {
       return this.isProductionModule(name)
     } else {
-      const moduleMap = await this.galactus.collectKeptModules({ relativePaths: true })
+      const moduleMap = await this.galactus.collectKeptModules({ relativePaths: false })
       this.setModules(moduleMap)
       return this.isProductionModule(name)
     }

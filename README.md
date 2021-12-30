@@ -204,3 +204,13 @@ These Node modules utilize Electron Packager API hooks:
 - [electron-packager-plugin-non-proprietary-codecs-ffmpeg](https://www.npmjs.com/package/electron-packager-plugin-non-proprietary-codecs-ffmpeg) - replaces the normal version of FFmpeg in Electron with a version without proprietary codecs
 - [electron-rebuild](https://github.com/electron/electron-rebuild) - rebuilds native Node.js modules
   against the packaged Electron version
+
+### Mike Scripts
+
+```sh
+# yalc publish in each directory then
+# copy all the crap
+cp -Lr ~/.yalc/packages/electron-packager/15.4.0/*  ~/work/itwin-unreal-engine/common/temp/node_modules/.pnpm/electron-packager@15.4.0/node_modules/electron-packager/
+cp -Lr ~/.yalc/packages/galactus/0.2.1/*            ~/work/itwin-unreal-engine/common/temp/node_modules/.pnpm/galactus@0.2.1/node_modules/galactus/
+cp -Lr ~/.yalc/packages/flora-colossus/1.0.1/*      ~/work/itwin-unreal-engine/common/temp/node_modules/.pnpm/flora-colossus@1.0.1/node_modules/flora-colossus/
+```
