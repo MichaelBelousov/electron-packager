@@ -67,10 +67,43 @@ function generateFilterFunction (ignore) {
   }
 }
 
-function userPathFilter (opts) {
+/**
+ * get cached pruner since it may have already read a module tree
+ * @param {string} dir
+ * @returns {prune.Pruner}
+ */
+function getPruner(dir) {
+  if (getPruner.cache === undefined) {
+    getPruner.cache = {};
+  }
+  if (!(dir in getPruner.cache)) {
+    getPruner.cache[dir] = new prune.Pruner(dir);
+  }
+  return getPruner.cache[dir];
+}
+
+// this is old and may be removed
+async function moduleFilter(pruner) {
+  // TODO: try to reuse stats from galactus or node glob
+  //const fileStat = await fs.promises.lstat(file);
+  //if (fileStat.isSymbolicLink()) file = await fs.promises.readlink(file);
+  // TODO: only do this if following symlinks, right?
+  let resolvedModulePath = file;
+  try {
+    // FIXME: weird handling but need to check if there is a symlink in the path, not just the result
+    resolvedModulePath = await fs.promises.readlink(file)
+    resolvedModulePath = path.resolve(path.dirname(file), resolvedModulePath)
+  } catch {
+    // FIXME: weird comment: resolving the path is necessary to remove extraneous ending slashes
+    resolvedModulePath = path.resolve(file)
+  }
+  return pruner.pruneModule(resolvedModulePath)
+}
+
+function userPathFilter (opts, filterModules = false) {
   const filterFunc = generateFilterFunction(opts.ignore || [])
   const ignoredOutDirs = generateIgnoredOutDirs(opts)
-  const pruner = opts.prune ? new prune.Pruner(opts.dir) : null
+  const pruner = opts.prune ? getPruner(opts.dir) : null
 
   return async function filter (file) {
     const fullPath = path.resolve(file)
@@ -85,39 +118,25 @@ function userPathFilter (opts) {
       }
     }
 
-    let name = fullPath.split(path.resolve(opts.dir))[1]
+    return filterFunc(path.relative(opts.dir, fullPath))
 
-    if (path.sep === '\\') {
-      name = common.normalizePath(name)
-    }
+    //let name = fullPath.split(path.resolve(opts.dir))[1]
 
-    if (pruner && name.startsWith('/node_modules/')) {
-      if (await prune.isModule(file)) {
-        // TODO: try to reuse stats from galactus or node glob
-        //const fileStat = await fs.promises.lstat(file);
-        //if (fileStat.isSymbolicLink()) file = await fs.promises.readlink(file);
-        // TODO: only do this if following symlinks, right?
-        let resolvedModulePath = file;
-        try {
-          // FIXME: weird handling but need to check if there is a symlink in the path, not just the result
-          resolvedModulePath = await fs.promises.readlink(file)
-          resolvedModulePath = path.resolve(path.dirname(resolvedModulePath), resolvedModulePath)
-        } catch {
-          // FIXME: weird comment: resolving the path is necessary to remove extraneous ending slashes
-          resolvedModulePath = path.resolve(file)
-        }
-        return pruner.pruneModule(resolvedModulePath)
-      } else {
-        return filterFunc(name)
-      }
-    }
+    //if (path.sep === '\\') {
+      //name = common.normalizePath(name)
+    //}
 
-    return filterFunc(name)
+    //if (filterModules && pruner && name.startsWith('/node_modules/') && await prune.isModule(file)) {
+      //return await moduleFilter(pruner);
+    //}
+
+    //return filterFunc(name)
   }
 }
 
 module.exports = {
   populateIgnoredPaths,
   generateIgnoredOutDirs,
-  userPathFilter
+  userPathFilter,
+  getPruner,
 }

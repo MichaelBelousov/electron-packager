@@ -123,14 +123,60 @@ class App {
       this.opts.arch
     ]
 
+    const userPathFilter = copyFilter.userPathFilter(this.opts);
     await fs.copy(this.opts.dir, this.originalResourcesAppDir, {
-      filter: copyFilter.userPathFilter(this.opts),
+      // TODO: check if src is normalized
+      filter: (src) => src !== path.join(this.opts.dir, "node_modules") && userPathFilter(src),
       dereference: this.opts.derefSymlinks
     })
+
+    await this.copyDependencies();
+
     await hooks.promisifyHooks(this.opts.afterCopy, hookArgs)
     if (this.opts.prune) {
       await hooks.promisifyHooks(this.opts.afterPrune, hookArgs)
     }
+  }
+
+  async copyDependencies() {
+    const hookArgs = []
+
+    // FIXME: should be conditional on opts.prune
+    const pruner = copyFilter.getPruner(this.opts.dir);
+    await pruner.lazyHydrate();
+
+    const directDeps = new Map(pruner.galactus.walker.modules.filter(m => m.depth === 1).map(m => [m.path, m]));
+
+    const userPathFilter = copyFilter.userPathFilter(this.opts);
+
+    for (let modulePath of pruner.modules) {
+      // FIXME: ensure the paths are normalized upstream in galactus
+      modulePath = path.normalize(modulePath);
+      const moduleInstallRoot = path.sep + 'node_modules' + path.sep
+      const relativePart = modulePath.slice(modulePath.indexOf(moduleInstallRoot) + 1)
+      const destination = path.join(this.originalResourcesAppDir, relativePart);
+      await fs.ensureDir(destination);
+      await fs.copy(modulePath, destination, {
+        // FIXME: check if fs.copy normalizes paths so we can rid the extra normalization
+        filter: (src, _dst) =>
+          userPathFilter(src) &&
+          // don't copy over sub dependencies, as they need pruning and will be copied over in this loop anyway
+          !new RegExp(`node_modules${path.sep}$`).test(path.normalize(src)),
+        dereference: this.opts.derefSymlinks,
+        //overwrite: true, // necessary in case the ensureDir creates a colliding subdirectory
+      });
+      // TODO: only link if the modulePath destination is not directly in app/node_modules
+      // link the dependency if it's a direct dependency
+      const isDirectDep = directDeps.has(modulePath);
+      if (isDirectDep) {
+        const name = directDeps.get(modulePath).name;
+        await fs.ensureSymlink(
+          destination,
+          path.join(this.originalResourcesAppDir, "node_modules", name),
+        );
+      }
+    }
+    await hooks.promisifyHooks(this.opts.afterCopyDeps, hookArgs);
   }
 
   async removeDefaultApp () {

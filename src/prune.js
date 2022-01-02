@@ -21,20 +21,18 @@ class Pruner {
     this.walkedTree = false
   }
 
-  setModules (moduleMap) {
-    const modulePaths = Array.from(moduleMap.keys())
-    this.modules = new Set(modulePaths)
-    this.walkedTree = true
+  async lazyHydrate() {
+    if (!this.walkedTree) {
+      const moduleMap = await this.galactus.collectKeptModules({ relativePaths: false })
+      const modulePaths = Array.from(moduleMap.keys())
+      this.modules = new Set(modulePaths)
+      this.walkedTree = true
+    }
   }
 
   async pruneModule (name) {
-    if (this.walkedTree) {
-      return this.isProductionModule(name)
-    } else {
-      const moduleMap = await this.galactus.collectKeptModules({ relativePaths: false })
-      this.setModules(moduleMap)
-      return this.isProductionModule(name)
-    }
+    await this.lazyHydrate();
+    return this.isProductionModule(name)
   }
 
   shouldKeepModule (module, isDevDep) {
